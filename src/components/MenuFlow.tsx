@@ -194,7 +194,7 @@ const AboutPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       </p>
       <ul>
         <li>Left thumb: joystick to move. Drag the right side of the screen to look around.</li>
-        <li>Sprint, Attack, Defend, Emote and view buttons sit on the screen. Pause any time from the top bar.</li>
+        <li>Sprint, Attack, Defend, Emote and view buttons sit on the screen. Friendly wanderers roam the halls. Pause any time from the top bar.</li>
         <li>Desktop: WASD to move, mouse drag to look, Shift to sprint, Esc to pause.</li>
         <li>The game works fully offline and collects no data.</li>
       </ul>

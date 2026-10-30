@@ -22,6 +22,22 @@ const EMOTE_COUNT = 3; // 0 = wave, 1 = cheer, 2 = dance
 
 const mix = (a: number, b: number, w: number) => a + (b - a) * w;
 
+export interface CharacterPalette {
+  skin: number;
+  hair: number;
+  shirt: number;
+  pants: number;
+  shoe: number;
+}
+
+const DEFAULT_PALETTE: CharacterPalette = {
+  skin: 0xc99673,
+  hair: 0x3b2a1a,
+  shirt: 0x00a8a8, // cyan shirt
+  pants: 0x3c44aa, // blue trousers
+  shoe: 0x55555a,
+};
+
 export class PlayerCharacter {
   public root: THREE.Group;
 
@@ -74,7 +90,7 @@ export class PlayerCharacter {
   private _targetQuat = new THREE.Quaternion();
   private _euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-  constructor() {
+  constructor(palette: CharacterPalette = DEFAULT_PALETTE) {
     this.root = new THREE.Group();
     this.root.name = 'PlayerCharacter';
 
@@ -83,12 +99,12 @@ export class PlayerCharacter {
     const PX = PX_SIZE;
     const mat = (color: number, roughness = 0.9) =>
       new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
-    const skinMat = mat(0xc99673);
-    const hairMat = mat(0x3b2a1a);
-    const shirtMat = mat(0x00a8a8); // Steve cyan shirt
-    const shirtDarkMat = mat(0x008c8c);
-    const pantsMat = mat(0x3c44aa); // Steve blue trousers
-    const shoeMat = mat(0x55555a);
+    const skinMat = mat(palette.skin);
+    const hairMat = mat(palette.hair);
+    const shirtMat = mat(palette.shirt);
+    const shirtDarkMat = mat(new THREE.Color(palette.shirt).multiplyScalar(0.8).getHex());
+    const pantsMat = mat(palette.pants);
+    const shoeMat = mat(palette.shoe);
     const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const eyeBlueMat = new THREE.MeshBasicMaterial({ color: 0x4b3fb0 });
     const mouthMat = new THREE.MeshBasicMaterial({ color: 0x7a4a34 });
@@ -401,6 +417,23 @@ export class PlayerCharacter {
     }
 
     this.applyActions(delta, isMoving && speed > 0.1);
+  }
+
+  /** Red flash used for hit feedback (0 = none). Only affects lit body materials. */
+  public setTint(intensity: number) {
+    for (const m of this.materials) {
+      if (m instanceof THREE.MeshStandardMaterial && m.emissiveIntensity !== undefined) {
+        if (intensity > 0) {
+          m.userData.baseEmissive ??= m.emissive.getHex();
+          m.userData.baseEmissiveIntensity ??= m.emissiveIntensity;
+          m.emissive.setHex(0xff2222);
+          m.emissiveIntensity = intensity;
+        } else if (m.userData.baseEmissive !== undefined) {
+          m.emissive.setHex(m.userData.baseEmissive);
+          m.emissiveIntensity = m.userData.baseEmissiveIntensity;
+        }
+      }
+    }
   }
 
   /** Right-arm overhead chop (works while standing or moving). */

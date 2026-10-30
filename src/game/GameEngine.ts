@@ -10,6 +10,7 @@ import { MazeGenerator } from './MazeGenerator';
 import { MazeBuilder } from './MazeBuilder';
 import { CollisionSystem } from './CollisionSystem';
 import { PlayerController } from './PlayerController';
+import { NpcManager } from './NpcManager';
 import { PlayerCharacter } from './PlayerCharacter';
 import { AudioManager } from './AudioManager';
 import { buildWallSegments } from './WallGeometry';
@@ -27,6 +28,7 @@ export class GameEngine {
   public mazeBuilder!: MazeBuilder;
   public playerController!: PlayerController;
   public playerCharacter!: PlayerCharacter;
+  public npcManager!: NpcManager;
   public audioManager: AudioManager;
 
   // Particles
@@ -252,11 +254,17 @@ export class GameEngine {
       0,
       this.mazeData.startWorldPos.z
     );
+
+    if (!this.npcManager) {
+      this.npcManager = new NpcManager(this.scene);
+    }
+    this.npcManager.spawn(this.mazeData);
   }
 
   /** Hand actions driven by on-screen buttons / keys. */
   public doAttack() {
     this.playerCharacter?.triggerAttack();
+    this.npcManager?.queueHit();
   }
   public setDefend(active: boolean) {
     this.playerCharacter?.setDefending(active);
@@ -422,6 +430,7 @@ export class GameEngine {
     if (this.gameState === 'TITLE') {
       // Cinematic orbital camera view showcasing the square labyrinth
       this.titleOrbitAngle += delta * 0.12;
+      this.npcManager?.update(delta, 1e6, 1e6, 0);
       const mazeSpan = Math.max(this.mazeData.rows, this.mazeData.cols) * this.mazeData.cellSize;
       const camRadius = mazeSpan * 0.85;
       const camHeight = 28 + Math.sin(elapsedTime * 0.4) * 4;
@@ -528,6 +537,12 @@ export class GameEngine {
 
       // First/Third-person player controller movement
       this.playerController.update(delta);
+      this.npcManager?.update(
+        delta,
+        this.playerController.position.x,
+        this.playerController.position.z,
+        this.playerController.rotationYaw
+      );
 
       // Procedural Character animation & kinematics
       // In first-person, neck-down body is visible when looking down/forward; head and neck are hidden.
@@ -650,6 +665,9 @@ export class GameEngine {
       cancelAnimationFrame(this.animFrameId);
     }
 
+    if (this.npcManager) {
+      this.npcManager.dispose();
+    }
     if (this.playerCharacter) {
       this.playerCharacter.dispose();
     }
