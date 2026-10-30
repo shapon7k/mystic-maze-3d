@@ -60,6 +60,9 @@ export class PlayerCharacter {
   private currentSpineLean = 0;
   private isFirstPerson = true;
 
+  /** Held diamond-style sword (child of the right hand). */
+  public sword!: THREE.Group;
+
   // Hand actions (attack / defend / emote)
   private attackT = -1;
   private emoteT = -1;
@@ -179,6 +182,45 @@ export class PlayerCharacter {
     this.rightShoulder = rArm.shoulder;
     this.rightElbow = rArm.elbow;
     this.rightHand = rArm.hand;
+
+    // Blocky diamond-style sword held in the right hand (pixel-art look, original design)
+    const diamondMat = new THREE.MeshStandardMaterial({
+      color: 0x3ee8d0,
+      emissive: 0x14b8a6,
+      emissiveIntensity: 0.25,
+      roughness: 0.35,
+      metalness: 0.2,
+    });
+    const diamondDarkMat = new THREE.MeshStandardMaterial({
+      color: 0x1ca89a,
+      emissive: 0x0f766e,
+      emissiveIntensity: 0.2,
+      roughness: 0.4,
+      metalness: 0.2,
+    });
+    const diamondTipMat = new THREE.MeshStandardMaterial({
+      color: 0xb9fff4,
+      emissive: 0x5eead4,
+      emissiveIntensity: 0.3,
+      roughness: 0.3,
+      metalness: 0.2,
+    });
+    const gripMat = mat(0x6b4423);
+    const guardMat = mat(0x4a3320);
+    this.materials.push(diamondMat, diamondDarkMat, diamondTipMat, gripMat, guardMat);
+
+    this.sword = new THREE.Group();
+    this.sword.name = 'DiamondSword';
+    this.sword.position.set(0, -0.6 * PX, 0.4 * PX);
+    this.sword.rotation.x = 0.67; // blade points up and forward from the fist
+    this.rightHand.add(this.sword);
+    // Local +Y runs along the blade
+    box(this.sword, PX, 5 * PX, PX, gripMat, 0, -0.5 * PX, 0); // handle
+    box(this.sword, PX * 1.2, PX * 1.2, PX * 1.2, guardMat, 0, -3.4 * PX, 0); // pommel
+    box(this.sword, PX * 1.2, 1.2 * PX, 4.6 * PX, guardMat, 0, 2.4 * PX, 0); // cross-guard
+    box(this.sword, PX * 1.0, 8 * PX, 2.6 * PX, diamondMat, 0, 7 * PX, 0); // blade
+    box(this.sword, PX * 1.1, 8 * PX, 0.9 * PX, diamondDarkMat, 0, 7 * PX, 0); // centre ridge
+    box(this.sword, PX * 1.0, 1.6 * PX, 1.6 * PX, diamondTipMat, 0, 11.6 * PX, 0); // tip
 
     // Neck pivot at top of torso; head sits directly on it (no visible neck in Minecraft)
     this.neck = new THREE.Group();

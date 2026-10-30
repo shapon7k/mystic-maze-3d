@@ -131,6 +131,13 @@ describe('PlayerCharacter Procedural Model & Articulation', () => {
     character.dispose();
   });
 
+  it('holds a sword in the right hand', () => {
+    const character = new PlayerCharacter();
+    expect(character.sword.parent).toBe(character.rightHand);
+    expect(character.sword.children.length).toBeGreaterThan(3);
+    character.dispose();
+  });
+
   it('disposes all geometries and materials cleanly without throwing', () => {
     const character = new PlayerCharacter();
     expect(() => character.dispose()).not.toThrow();
