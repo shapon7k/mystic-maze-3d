@@ -253,35 +253,9 @@ export class MazeBuilder {
       for (const seg of segments) {
         if (seg.row !== r) continue;
         const geo = createWallGeometry(seg);
-        // Every wall solid uses the SAME material so boxes that overlap at junctions
-        // are visually seamless. Rune walls get a thin decorative panel instead.
+        // Every wall solid uses the SAME material, so overlapping boxes at junctions
+        // are visually seamless (no second colour can appear to sink into a neighbour).
         standardGeos.push(geo);
-        if (seg.isRune) {
-          const lenX = seg.maxX - seg.minX;
-          const lenZ = seg.maxZ - seg.minZ;
-          const alongX = lenX >= lenZ;
-          const inset = seg.thickness / 2 + 0.45;
-          const len = (alongX ? lenX : lenZ) - inset * 2;
-          if (len > 0.6) {
-            const h = seg.height * 0.3;
-            const cx = (seg.minX + seg.maxX) / 2;
-            const cz = (seg.minZ + seg.maxZ) / 2;
-            const cy = seg.height * 0.55;
-            const off = 0.012;
-            for (const sign of [1, -1]) {
-              const plane = new THREE.PlaneGeometry(len, h);
-              if (alongX) {
-                // plane faces +Z by default; flip to face -Z for the other side
-                if (sign < 0) plane.rotateY(Math.PI);
-                plane.translate(cx, cy, sign * (seg.thickness / 2 + off) + cz);
-              } else {
-                plane.rotateY(sign > 0 ? Math.PI / 2 : -Math.PI / 2);
-                plane.translate(sign * (seg.thickness / 2 + off) + cx, cy, cz);
-              }
-              runeGeos.push(plane);
-            }
-          }
-        }
       }
 
       if (standardGeos.length > 0) {
