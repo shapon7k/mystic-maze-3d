@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ------------------------------------------------------------------
+   Opening-menu stage: a 16:9 box that always fits the screen.
+   Every size inside is in cqw (1% of the stage width), so the layout
+   looks identical from a 640x360 phone to a 1920x1080 tablet.
+------------------------------------------------------------------- */
+.mm-stage-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 30% 40%, rgba(30, 27, 75, 0.35), rgba(2, 6, 23, 0.82) 70%);
+}
+.mm-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  container-type: size;
+  pointer-events: auto;
+  overflow: hidden;
+  color: #e2e8f0;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.mm-screen {
+  position: absolute;
+  inset: 0;
+  padding: 4.5cqw 5.5cqw;
+  display: flex;
+  animation: mm-fade 0.35s ease both;
+}
+@keyframes mm-fade {
+  from { opacity: 0; transform: translateY(1cqw); }
+  to { opacity: 1; transform: none; }
+}
+
+.mm-title {
+  margin: 0;
+  font-size: 6.4cqw;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #67e8f9, #c7d2fe, #d8b4fe);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1.2cqw rgba(56, 189, 248, 0.35));
+}
+.mm-title.mm-title-sm { font-size: 4.2cqw; }
+.mm-tagline { margin: 1.4cqw 0 0; font-size: 2cqw; line-height: 1.45; color: #cbd5e1; font-weight: 300; letter-spacing: 0.03em; }
+.mm-badge {
+  display: inline-flex; align-items: center; gap: 0.8cqw;
+  margin-top: 1.8cqw; padding: 0.7cqw 1.4cqw;
+  border-radius: 0.6cqw; border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(30, 27, 75, 0.45); color: #a5b4fc; font-size: 1.8cqw;
+}
+.mm-emblem { width: 14cqw; height: 14cqw; color: #22d3ee; filter: drop-shadow(0 0 1.6cqw rgba(56, 189, 248, 0.6)); }
+.mm-emblem.mm-emblem-sm { width: 9cqw; height: 9cqw; }
+
+.mm-btn {
+  display: flex; align-items: center; justify-content: center; gap: 1.2cqw;
+  width: 100%; padding: 1.7cqw 2cqw;
+  border-radius: 1cqw; border: 1px solid rgba(100, 116, 139, 0.55);
+  background: rgba(15, 23, 42, 0.72); color: #e2e8f0;
+  font-size: 2.3cqw; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  cursor: pointer; transition: transform 0.1s, border-color 0.15s, background 0.15s;
+}
+.mm-btn:hover { border-color: #67e8f9; background: rgba(30, 41, 59, 0.85); }
+.mm-btn:active { transform: scale(0.97); }
+.mm-btn svg { width: 2.6cqw; height: 2.6cqw; }
+.mm-btn.mm-primary {
+  border: none; color: #fff; padding: 2.1cqw 2cqw; font-size: 2.7cqw;
+  background: linear-gradient(90deg, #06b6d4, #4f46e5 55%, #9333ea);
+  box-shadow: 0 0 2.4cqw rgba(56, 189, 248, 0.4);
+}
+.mm-btn.mm-primary:hover { background: linear-gradient(90deg, #22d3ee, #6366f1 55%, #a855f7); }
+.mm-btn.mm-ghost { width: auto; padding: 1.1cqw 2.2cqw; font-size: 1.9cqw; }
+
+.mm-card {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  padding: 1.8cqw 1cqw; border-radius: 1.2cqw; border: 1px solid rgba(51, 65, 85, 0.9);
+  background: rgba(15, 23, 42, 0.7); color: #94a3b8; cursor: pointer; transition: all 0.15s;
+}
+.mm-card:hover { border-color: #64748b; color: #e2e8f0; }
+.mm-card.mm-selected {
+  background: rgba(8, 51, 68, 0.6); border-color: #22d3ee; color: #a5f3fc;
+  box-shadow: 0 0 1.8cqw rgba(56, 189, 248, 0.3);
+}
+.mm-card .mm-card-name { font-size: 2.6cqw; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.mm-card .mm-card-grid { margin-top: 0.8cqw; font-size: 2.2cqw; font-family: ui-monospace, monospace; }
+.mm-card .mm-card-sub { margin-top: 0.6cqw; font-size: 1.75cqw; opacity: 0.75; }
+.mm-dots { display: flex; gap: 0.6cqw; margin-top: 1.2cqw; }
+.mm-dots i { width: 1.1cqw; height: 1.1cqw; border-radius: 50%; background: currentColor; opacity: 0.25; }
+.mm-dots i.mm-on { opacity: 1; }
+
+.mm-input {
+  flex: 1; min-width: 0; padding: 1.2cqw 1.6cqw; border-radius: 0.8cqw;
+  border: 1px solid rgba(100, 116, 139, 0.6); background: rgba(15, 23, 42, 0.8);
+  color: #a5f3fc; font-size: 2cqw; font-family: ui-monospace, monospace;
+}
+.mm-input:focus { outline: none; border-color: #22d3ee; }
+.mm-iconbtn {
+  display: flex; align-items: center; justify-content: center; padding: 1.2cqw;
+  border-radius: 0.8cqw; border: 1px solid rgba(100, 116, 139, 0.6);
+  background: rgba(30, 41, 59, 0.9); color: #cbd5e1; cursor: pointer;
+}
+.mm-iconbtn svg { width: 2.6cqw; height: 2.6cqw; }
+.mm-label { font-size: 1.7cqw; letter-spacing: 0.22em; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
+.mm-hint { font-size: 1.75cqw; color: #94a3b8; font-style: italic; }
+.mm-footer { font-size: 1.75cqw; color: rgba(148, 163, 184, 0.85); letter-spacing: 0.06em; font-family: ui-monospace, monospace; }
+
+/* Splash loading bar */
+.mm-bar { width: 30cqw; height: 0.7cqw; border-radius: 1cqw; background: rgba(51, 65, 85, 0.7); overflow: hidden; }
+.mm-bar > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #22d3ee, #a855f7); animation: mm-load 2.4s ease-out forwards; }
+@keyframes mm-load { to { width: 100%; } }
+.mm-pulse { animation: mm-pulse 1.6s ease-in-out infinite; }
+@keyframes mm-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+/* About panel */
+.mm-overlay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(2, 6, 23, 0.8); animation: mm-fade 0.2s ease both; }
+.mm-panel { width: 78cqw; max-height: 86cqh; overflow-y: auto; padding: 3cqw 3.5cqw; border-radius: 1.6cqw; border: 1px solid rgba(71, 85, 105, 0.9); background: rgba(15, 23, 42, 0.96); }
+.mm-panel h2 { margin: 0 0 1.4cqw; font-size: 2.8cqw; letter-spacing: 0.14em; text-transform: uppercase; color: #67e8f9; }
+.mm-panel p, .mm-panel li { font-size: 1.85cqw; line-height: 1.5; color: #cbd5e1; }
+.mm-panel ul { margin: 0.8cqw 0 0; padding-left: 2.4cqw; }

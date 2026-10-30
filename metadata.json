@@ -1,0 +1,6 @@
+{
+  "name": "Mystic Maze 3D",
+  "description": "An atmospheric first-person 3D circular labyrinth puzzle game with procedural generation, ancient glowing stone corridors, and pure spatial exploration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
