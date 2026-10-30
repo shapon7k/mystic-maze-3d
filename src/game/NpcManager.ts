@@ -21,6 +21,9 @@ const NPC_SPEED = 1.8; // m/s
 const HIT_RANGE = 2.3;
 const HIT_DELAY = 0.18; // swing connects partway through the attack animation
 const STUN_TIME = 1.4;
+const NPC_RADIUS = 0.4;
+const PLAYER_RADIUS = 0.45;
+const BLOCK_DIST = 1.15; // an NPC stops when the player stands in its way this close
 
 interface Npc {
   character: PlayerCharacter;
@@ -118,6 +121,9 @@ export class NpcManager {
         n.moving = false;
         n.wait -= delta;
         if (n.wait <= 0) this.chooseNext(n, maze);
+      } else if (this.isPlayerInWay(n, playerX, playerZ)) {
+        // Player is blocking the passage ahead: wait politely instead of walking through
+        n.moving = false;
       } else {
         n.t = Math.min(1, n.t + (NPC_SPEED * delta) / maze.cellSize);
         n.moving = true;
@@ -142,6 +148,38 @@ export class NpcManager {
         false, 2.4, 1.0
       );
     }
+  }
+
+  private isPlayerInWay(n: Npc, px: number, pz: number): boolean {
+    const dx = px - n.x;
+    const dz = pz - n.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > BLOCK_DIST) return false;
+    return dx * n.dirX + dz * n.dirZ > 0; // only when the player is ahead of it
+  }
+
+  /**
+   * Solid-body push: returns the player position moved out of any overlapping NPC.
+   * Callers should re-run wall collision on the result.
+   */
+  public pushPlayerOut(px: number, pz: number): { x: number; z: number } {
+    let x = px;
+    let z = pz;
+    const minDist = NPC_RADIUS + PLAYER_RADIUS;
+    for (const n of this.npcs) {
+      const dx = x - n.x;
+      const dz = z - n.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist >= minDist) continue;
+      if (dist < 1e-4) {
+        x = n.x + minDist; // exact overlap: pick any direction
+        continue;
+      }
+      const k = minDist / dist;
+      x = n.x + dx * k;
+      z = n.z + dz * k;
+    }
+    return { x, z };
   }
 
   private chooseNext(n: Npc, maze: MazeData) {

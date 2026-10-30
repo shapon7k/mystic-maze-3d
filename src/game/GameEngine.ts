@@ -543,6 +543,16 @@ export class GameEngine {
         this.playerController.position.z,
         this.playerController.rotationYaw
       );
+      // NPCs are solid: push the player out of them, then keep the result inside the maze walls
+      if (this.npcManager) {
+        const pushed = this.npcManager.pushPlayerOut(
+          this.playerController.position.x,
+          this.playerController.position.z
+        );
+        const safe = this.collisionSystem.resolvePosition(pushed.x, pushed.z);
+        this.playerController.position.x = safe.x;
+        this.playerController.position.z = safe.z;
+      }
 
       // Procedural Character animation & kinematics
       // In first-person, neck-down body is visible when looking down/forward; head and neck are hidden.

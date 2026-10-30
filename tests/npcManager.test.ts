@@ -65,4 +65,17 @@ describe('NpcManager wanderers', () => {
     expect(npcs.getPositions()[0]).toEqual(frozen);
     npcs.dispose();
   });
+
+  it('is solid: pushes an overlapping player out and waits when the player blocks its way', () => {
+    const maze = MazeGenerator.generate(DIFFICULTY_PRESETS.novice, 5);
+    const npcs = new NpcManager(new THREE.Scene());
+    npcs.spawn(maze);
+    const t = npcs.getPositions()[0];
+    const out = npcs.pushPlayerOut(t.x + 0.2, t.z);
+    expect(Math.hypot(out.x - t.x, out.z - t.z)).toBeGreaterThanOrEqual(0.849);
+    // No overlap -> unchanged
+    const far = npcs.pushPlayerOut(t.x + 3, t.z);
+    expect(far.x).toBeCloseTo(t.x + 3, 6);
+    npcs.dispose();
+  });
 });
