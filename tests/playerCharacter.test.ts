@@ -39,8 +39,8 @@ describe('PlayerCharacter Procedural Model & Articulation', () => {
     character.root.updateMatrixWorld(true);
     const headWorldPos = new THREE.Vector3();
     character.headGroup.getWorldPosition(headWorldPos);
-    // Head joint base is at y = 1.57m; head center with eyes is at ~1.65m - 1.68m
-    expect(headWorldPos.y).toBeGreaterThanOrEqual(1.50);
+    // Minecraft proportions: head joint (neck) at 24 px = ~1.38m; eyes ~1.52m
+    expect(headWorldPos.y).toBeGreaterThanOrEqual(1.30);
     expect(headWorldPos.y).toBeLessThanOrEqual(1.70);
 
     character.dispose();
