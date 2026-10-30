@@ -16,6 +16,12 @@ const PX_SIZE = 0.0575;
 /** Hip height = 12 pixels of leg. */
 const PELVIS_Y = 12 * PX_SIZE;
 
+const ATTACK_DURATION = 0.42;
+const EMOTE_DURATION = 2.4;
+const EMOTE_COUNT = 3; // 0 = wave, 1 = cheer, 2 = dance
+
+const mix = (a: number, b: number, w: number) => a + (b - a) * w;
+
 export class PlayerCharacter {
   public root: THREE.Group;
 
@@ -53,6 +59,13 @@ export class PlayerCharacter {
   private targetYaw = 0;
   private currentSpineLean = 0;
   private isFirstPerson = true;
+
+  // Hand actions (attack / defend / emote)
+  private attackT = -1;
+  private emoteT = -1;
+  private emoteIndex = -1;
+  private defending = false;
+  private defendBlend = 0;
 
   // Zero-GC Preallocated Scratch Variables
   private _targetQuat = new THREE.Quaternion();
@@ -344,6 +357,122 @@ export class PlayerCharacter {
       this.spine.rotation.x = this.currentSpineLean + breath;
       this.neck.rotation.x = -breath * 0.5;
     }
+
+    this.applyActions(delta, isMoving && speed > 0.1);
+  }
+
+  /** Right-arm overhead chop (works while standing or moving). */
+  public triggerAttack() {
+    if (this.attackT < 0) this.attackT = 0;
+  }
+
+  /** Hold-to-guard: both forearms raised in front of the body. */
+  public setDefending(active: boolean) {
+    this.defending = active;
+  }
+
+  /** Plays the next emote in the cycle: wave -> cheer -> dance. Cancelled by walking. */
+  public triggerEmote() {
+    this.emoteIndex = (this.emoteIndex + 1) % EMOTE_COUNT;
+    this.emoteT = 0;
+  }
+
+  private applyActions(delta: number, walking: boolean) {
+    // --- Defend (blended, held) ---
+    this.defendBlend = THREE.MathUtils.damp(this.defendBlend, this.defending ? 1 : 0, 14, delta);
+    const db = this.defendBlend;
+    if (db > 0.001) {
+      this.leftShoulder.rotation.x = mix(this.leftShoulder.rotation.x, -1.15, db);
+      this.rightShoulder.rotation.x = mix(this.rightShoulder.rotation.x, -1.15, db);
+      this.leftShoulder.rotation.y = mix(this.leftShoulder.rotation.y, 0.55, db);
+      this.rightShoulder.rotation.y = mix(this.rightShoulder.rotation.y, -0.55, db);
+      this.leftElbow.rotation.x = mix(this.leftElbow.rotation.x, -1.55, db);
+      this.rightElbow.rotation.x = mix(this.rightElbow.rotation.x, -1.55, db);
+      this.spine.rotation.x += 0.12 * db;
+    }
+
+    // --- Emote ---
+    let ew = 0;
+    let t = 0;
+    if (this.emoteT >= 0) {
+      if (walking) {
+        this.emoteT = -1;
+      } else {
+        this.emoteT += delta;
+        t = this.emoteT;
+        if (t >= EMOTE_DURATION) {
+          this.emoteT = -1;
+        } else {
+          ew = Math.min(1, t / 0.25, (EMOTE_DURATION - t) / 0.25);
+        }
+      }
+    }
+    let spineYaw = 0;
+    let headTilt = 0;
+    this.leftElbow.rotation.z = 0;
+    this.rightElbow.rotation.z = 0;
+    if (ew > 0) {
+      if (this.emoteIndex === 0) {
+        // Wave: right arm overhead, forearm sways side to side
+        this.rightShoulder.rotation.z = mix(this.rightShoulder.rotation.z, 2.6, ew);
+        this.rightShoulder.rotation.x = mix(this.rightShoulder.rotation.x, 0, ew);
+        this.rightElbow.rotation.x = mix(this.rightElbow.rotation.x, 0, ew);
+        this.rightElbow.rotation.z = Math.sin(t * 13) * 0.5 * ew;
+        headTilt = 0.1 * ew;
+      } else if (this.emoteIndex === 1) {
+        // Cheer: both arms up, little hops
+        this.leftShoulder.rotation.z = mix(this.leftShoulder.rotation.z, -2.8, ew);
+        this.rightShoulder.rotation.z = mix(this.rightShoulder.rotation.z, 2.8, ew);
+        this.leftShoulder.rotation.x = mix(this.leftShoulder.rotation.x, 0, ew);
+        this.rightShoulder.rotation.x = mix(this.rightShoulder.rotation.x, 0, ew);
+        this.leftElbow.rotation.x = mix(this.leftElbow.rotation.x, 0, ew);
+        this.rightElbow.rotation.x = mix(this.rightElbow.rotation.x, 0, ew);
+        this.pelvis.position.y += Math.abs(Math.sin(t * 9)) * 0.1 * ew;
+      } else {
+        // Dance: pumping arms, hip sway, stepping legs
+        const s9 = Math.sin(t * 9);
+        this.leftShoulder.rotation.x = mix(this.leftShoulder.rotation.x, -1.0 + s9 * 0.9, ew);
+        this.rightShoulder.rotation.x = mix(this.rightShoulder.rotation.x, -1.0 - s9 * 0.9, ew);
+        this.leftElbow.rotation.x = mix(this.leftElbow.rotation.x, -1.2, ew);
+        this.rightElbow.rotation.x = mix(this.rightElbow.rotation.x, -1.2, ew);
+        this.leftHip.rotation.x = mix(this.leftHip.rotation.x, s9 * 0.35, ew);
+        this.rightHip.rotation.x = mix(this.rightHip.rotation.x, -s9 * 0.35, ew);
+        this.pelvis.position.y -= Math.abs(s9) * 0.04 * ew;
+        spineYaw = Math.sin(t * 4.5) * 0.35 * ew;
+        headTilt = Math.sin(t * 4.5) * 0.15 * ew;
+      }
+    }
+
+    // --- Attack (overrides right arm; applied last) ---
+    if (this.attackT >= 0) {
+      this.attackT += delta;
+      const p = this.attackT / ATTACK_DURATION;
+      if (p >= 1) {
+        this.attackT = -1;
+      } else {
+        const aw = Math.min(1, Math.sin(p * Math.PI) * 4);
+        let ang: number;
+        let twist: number;
+        if (p < 0.35) {
+          const k = p / 0.35; // wind-up: raise arm up and forward
+          ang = -2.4 * k;
+          twist = 0.25 * k;
+        } else {
+          const k = (p - 0.35) / 0.65; // slam down
+          const e = 1 - (1 - k) * (1 - k);
+          ang = -2.4 + 2.2 * e;
+          twist = 0.25 - 0.6 * e;
+        }
+        this.rightShoulder.rotation.x = mix(this.rightShoulder.rotation.x, ang, aw);
+        this.rightShoulder.rotation.y = mix(this.rightShoulder.rotation.y, 0, aw);
+        this.rightShoulder.rotation.z = mix(this.rightShoulder.rotation.z, 0.05, aw);
+        this.rightElbow.rotation.x = mix(this.rightElbow.rotation.x, -0.3, aw);
+        spineYaw += twist * aw;
+      }
+    }
+
+    this.spine.rotation.y = spineYaw;
+    this.headGroup.rotation.z = headTilt;
   }
 
   /**

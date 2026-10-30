@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Pause, Volume2, VolumeX, Zap, Eye, User } from 'lucide-react';
+import { Pause, Volume2, VolumeX, Zap, Eye, User, Swords, Shield, Smile } from 'lucide-react';
 import { VirtualJoystick } from './VirtualJoystick';
 
 interface GameHUDProps {
@@ -16,6 +16,9 @@ interface GameHUDProps {
   onJoystickMove: (x: number, y: number) => void;
   onLookDelta: (dx: number, dy: number) => void;
   onToggleSprint: (active: boolean) => void;
+  onAttack: () => void;
+  onDefend: (active: boolean) => void;
+  onEmote: () => void;
   onToggleMute: () => void;
   onToggleCamera: () => void;
   onPause: () => void;
@@ -30,6 +33,9 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onJoystickMove,
   onLookDelta,
   onToggleSprint,
+  onAttack,
+  onDefend,
+  onEmote,
   onToggleMute,
   onToggleCamera,
   onPause,
@@ -171,11 +177,41 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
         {/* Center: Desktop Controls Hint (subtle, non-obtrusive, hidden on small screens) */}
         <div className="hidden lg:block pointer-events-none pb-2 text-center text-xs text-slate-400/80 font-mono tracking-wide bg-slate-950/60 px-4 py-1.5 rounded border border-slate-800/40">
-          WASD / Arrows to Move · Mouse Drag to Look · Shift to Sprint · V to Toggle View · Esc to Pause
+          WASD / Arrows to Move · Mouse Drag to Look · Shift to Sprint · J Attack · K Defend · E Emote · V to Toggle View · Esc to Pause
         </div>
 
-        {/* Lower Right: Sprint Button */}
-        <div className="pointer-events-auto flex flex-col items-center gap-1 pb-1 sm:pb-2">
+        {/* Lower Right: Action Buttons (Emote / Defend on top, Attack / Sprint below) */}
+        <div className="pointer-events-auto grid grid-cols-2 gap-1.5 sm:gap-2 pb-1 sm:pb-2 touch-none select-none">
+          <button
+            type="button"
+            onPointerDown={onEmote}
+            className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center border bg-slate-900/80 border-slate-700 text-slate-300 active:scale-95 active:border-fuchsia-400 active:text-fuchsia-300 transition-all shadow-lg cursor-pointer"
+          >
+            <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-[8px] uppercase font-bold tracking-widest">Emote</span>
+          </button>
+
+          <button
+            type="button"
+            onPointerDown={() => onDefend(true)}
+            onPointerUp={() => onDefend(false)}
+            onPointerLeave={() => onDefend(false)}
+            onPointerCancel={() => onDefend(false)}
+            className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center border bg-slate-900/80 border-slate-700 text-slate-300 active:scale-95 active:bg-sky-500/30 active:border-sky-400 active:text-sky-300 transition-all shadow-lg cursor-pointer"
+          >
+            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-[8px] uppercase font-bold tracking-widest">Defend</span>
+          </button>
+
+          <button
+            type="button"
+            onPointerDown={onAttack}
+            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full flex flex-col items-center justify-center border bg-rose-950/70 border-rose-500/70 text-rose-300 active:scale-95 active:bg-rose-500/30 transition-all shadow-[0_0_14px_rgba(244,63,94,0.3)] cursor-pointer"
+          >
+            <Swords className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-widest">Attack</span>
+          </button>
+
           <button
             type="button"
             onPointerDown={() => onToggleSprint(true)}

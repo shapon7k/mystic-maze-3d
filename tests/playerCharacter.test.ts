@@ -86,6 +86,51 @@ describe('PlayerCharacter Procedural Model & Articulation', () => {
     character.dispose();
   });
 
+  it('attack swings the right arm up then down and then returns control to normal animation', () => {
+    const character = new PlayerCharacter();
+    character.triggerAttack();
+    let minX = 0;
+    for (let i = 0; i < 12; i++) {
+      character.update(0.016, 0, 0, 0, 0, false, false, 0, 0, true);
+      minX = Math.min(minX, character.rightShoulder.rotation.x);
+    }
+    expect(minX).toBeLessThan(-1.0); // arm raised well above the hip
+    for (let i = 0; i < 60; i++) {
+      character.update(0.016, 0, 0, 0, 0, false, false, 0, 0, true);
+    }
+    expect(Math.abs(character.rightShoulder.rotation.x)).toBeLessThan(0.3);
+    character.dispose();
+  });
+
+  it('defend raises both forearms while held and relaxes when released', () => {
+    const character = new PlayerCharacter();
+    character.setDefending(true);
+    for (let i = 0; i < 40; i++) {
+      character.update(0.016, 0, 0, 0, 0, false, false, 0, 0, true);
+    }
+    expect(character.leftElbow.rotation.x).toBeLessThan(-1.2);
+    expect(character.rightElbow.rotation.x).toBeLessThan(-1.2);
+    character.setDefending(false);
+    for (let i = 0; i < 80; i++) {
+      character.update(0.016, 0, 0, 0, 0, false, false, 0, 0, true);
+    }
+    expect(character.leftElbow.rotation.x).toBeGreaterThan(-0.4);
+    character.dispose();
+  });
+
+  it('emote raises an arm and is cancelled by walking', () => {
+    const character = new PlayerCharacter();
+    character.triggerEmote(); // wave
+    for (let i = 0; i < 30; i++) {
+      character.update(0.016, 0, 0, 0, 0, false, false, 0, 0, true);
+    }
+    expect(character.rightShoulder.rotation.z).toBeGreaterThan(1.5);
+    character.update(0.016, 0, 0, 0, 4.2, true, false, 0, 1, true);
+    character.update(0.016, 0, 0, 0, 4.2, true, false, 0, 1, true);
+    expect(character.rightShoulder.rotation.z).toBeLessThan(0.5);
+    character.dispose();
+  });
+
   it('disposes all geometries and materials cleanly without throwing', () => {
     const character = new PlayerCharacter();
     expect(() => character.dispose()).not.toThrow();

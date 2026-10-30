@@ -272,6 +272,18 @@ export default function App() {
     }
   }, []);
 
+  // Hand actions
+  const handleAttack = useCallback(() => {
+    audioManagerRef.current?.ensureContext();
+    engineRef.current?.doAttack();
+  }, []);
+  const handleDefend = useCallback((active: boolean) => {
+    engineRef.current?.setDefend(active);
+  }, []);
+  const handleEmote = useCallback(() => {
+    engineRef.current?.doEmote();
+  }, []);
+
   // Toggle Camera View Mode (First-Person vs Third-Person)
   const handleToggleCamera = useCallback(() => {
     const nextMode = cameraMode === 'first-person' ? 'third-person' : 'first-person';
@@ -346,11 +358,27 @@ export default function App() {
         return;
       }
 
+      if (gameState === 'PLAYING') {
+        if (e.code === 'KeyJ') {
+          if (!e.repeat) handleAttack();
+          return;
+        }
+        if (e.code === 'KeyK') {
+          handleDefend(true);
+          return;
+        }
+        if (e.code === 'KeyE') {
+          if (!e.repeat) handleEmote();
+          return;
+        }
+      }
+
       heldKeys.add(e.code);
       updateKeyboardMovement();
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'KeyK') handleDefend(false);
       heldKeys.delete(e.code);
       updateKeyboardMovement();
     };
@@ -452,6 +480,9 @@ export default function App() {
           onJoystickMove={handleJoystickMove}
           onLookDelta={handleLookDelta}
           onToggleSprint={handleToggleSprint}
+          onAttack={handleAttack}
+          onDefend={handleDefend}
+          onEmote={handleEmote}
           onToggleMute={handleToggleMute}
           onToggleCamera={handleToggleCamera}
           onPause={handlePause}

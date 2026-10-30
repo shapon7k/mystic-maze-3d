@@ -254,6 +254,17 @@ export class GameEngine {
     );
   }
 
+  /** Hand actions driven by on-screen buttons / keys. */
+  public doAttack() {
+    this.playerCharacter?.triggerAttack();
+  }
+  public setDefend(active: boolean) {
+    this.playerCharacter?.setDefending(active);
+  }
+  public doEmote() {
+    this.playerCharacter?.triggerEmote();
+  }
+
   public setGameState(state: GameState) {
     const previousState = this.gameState;
     this.gameState = state;
