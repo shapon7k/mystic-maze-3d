@@ -8,6 +8,15 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { MazeData } from '../types/game';
 import { WallSegment, buildWallSegments, createWallGeometry } from './WallGeometry';
 
+interface WallChunk {
+  cx: number;
+  cz: number;
+  centerX: number;
+  centerZ: number;
+  pieces: WallSegment[];
+  mesh: THREE.Mesh | null;
+}
+
 export class MazeBuilder {
   private scene: THREE.Scene;
   private mazeGroup: THREE.Group;
@@ -31,6 +40,14 @@ export class MazeBuilder {
   public portalPosition: THREE.Vector3 = new THREE.Vector3();
   public portalTriggerRadius = 1.8;
   public wallMeshes: THREE.Mesh[] = [];
+
+  // ---- Chunk streaming (walls are built/disposed per chunk around the player) ----
+  /** Chunk edge length in grid cells. */
+  public static readonly CHUNK_CELLS = 2;
+  private chunks: WallChunk[] = [];
+  private chunkSpan = 10; // metres (CHUNK_CELLS * cellSize)
+  /** Only chunks within this distance (m) of the player are built; Infinity = everything. */
+  public viewDistance = Infinity;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -246,45 +263,12 @@ export class MazeBuilder {
     // Group by grid row and material to keep draw calls low while enabling frustum culling.
     const segments = wallSegments ?? buildWallSegments(maze);
 
-    for (let r = 0; r < rows; r++) {
-      const standardGeos: THREE.BufferGeometry[] = [];
-      const runeGeos: THREE.BufferGeometry[] = [];
-
-      for (const seg of segments) {
-        if (seg.row !== r) continue;
-        const geo = createWallGeometry(seg);
-        // Every wall solid uses the SAME material, so overlapping boxes at junctions
-        // are visually seamless (no second colour can appear to sink into a neighbour).
-        standardGeos.push(geo);
-      }
-
-      if (standardGeos.length > 0) {
-        const merged = mergeGeometries(standardGeos, false);
-        if (merged) {
-          merged.computeBoundingBox();
-          merged.computeBoundingSphere();
-          const mesh = new THREE.Mesh(merged, this.materials.wall);
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-          this.mazeGroup.add(mesh);
-          this.wallMeshes.push(mesh);
-        }
-        standardGeos.forEach((g) => g.dispose());
-      }
-
-      if (runeGeos.length > 0) {
-        const merged = mergeGeometries(runeGeos, false);
-        if (merged) {
-          merged.computeBoundingBox();
-          merged.computeBoundingSphere();
-          const mesh = new THREE.Mesh(merged, this.materials.wallRune);
-          mesh.castShadow = false;
-          mesh.receiveShadow = false;
-          this.mazeGroup.add(mesh); // decoration only: not raycast-blocking
-        }
-        runeGeos.forEach((g) => g.dispose());
-      }
-    }
+    // Split every wall run at chunk boundaries (render pieces only: collision keeps the full runs,
+    // and the pieces tile the exact same boxes) and bucket the pieces per chunk.
+    this.viewDistance = Infinity;
+    this.buildChunkData(maze, segments);
+    // Start fully loaded; the engine then streams chunks around the player via updateChunks().
+    this.updateChunks(0, 0, Infinity, Infinity);
 
     // 3. Start dais / platform
     this.createStartChamber(maze);
@@ -484,12 +468,124 @@ export class MazeBuilder {
     }
   }
 
+  private buildChunkData(maze: MazeData, segments: WallSegment[]) {
+    const { rows, cols, cellSize } = maze;
+    const span = MazeBuilder.CHUNK_CELLS * cellSize;
+    this.chunkSpan = span;
+    const x0 = (-cols / 2) * cellSize;
+    const z0 = (-rows / 2) * cellSize;
+    const nx = Math.ceil((cols * cellSize) / span);
+    const nz = Math.ceil((rows * cellSize) / span);
+    const map = new Map<string, WallChunk>();
+    const getChunk = (cx: number, cz: number) => {
+      const key = cx + ',' + cz;
+      let c = map.get(key);
+      if (!c) {
+        c = {
+          cx, cz,
+          centerX: x0 + (cx + 0.5) * span,
+          centerZ: z0 + (cz + 0.5) * span,
+          pieces: [],
+          mesh: null,
+        };
+        map.set(key, c);
+      }
+      return c;
+    };
+    const clampIdx = (v: number, n: number) => Math.max(0, Math.min(n - 1, v));
+
+    for (const seg of segments) {
+      const alongX = seg.maxX - seg.minX >= seg.maxZ - seg.minZ;
+      if (alongX) {
+        const cz = clampIdx(Math.floor(((seg.minZ + seg.maxZ) / 2 - z0) / span + 1e-9), nz);
+        const first = clampIdx(Math.floor((seg.minX - x0) / span + 1e-9), nx);
+        const last = clampIdx(Math.floor((seg.maxX - x0) / span - 1e-9), nx);
+        for (let cx = first; cx <= last; cx++) {
+          const minX = cx === first ? seg.minX : x0 + cx * span;
+          const maxX = cx === last ? seg.maxX : x0 + (cx + 1) * span;
+          if (maxX - minX > 1e-6) getChunk(cx, cz).pieces.push({ ...seg, minX, maxX });
+        }
+      } else {
+        const cx = clampIdx(Math.floor(((seg.minX + seg.maxX) / 2 - x0) / span + 1e-9), nx);
+        const first = clampIdx(Math.floor((seg.minZ - z0) / span + 1e-9), nz);
+        const last = clampIdx(Math.floor((seg.maxZ - z0) / span - 1e-9), nz);
+        for (let cz = first; cz <= last; cz++) {
+          const minZ = cz === first ? seg.minZ : z0 + cz * span;
+          const maxZ = cz === last ? seg.maxZ : z0 + (cz + 1) * span;
+          if (maxZ - minZ > 1e-6) getChunk(cx, cz).pieces.push({ ...seg, minZ, maxZ });
+        }
+      }
+    }
+    this.chunks = Array.from(map.values());
+  }
+
+  private loadChunk(chunk: WallChunk) {
+    if (chunk.mesh || chunk.pieces.length === 0) return;
+    const geos = chunk.pieces.map((piece) => createWallGeometry(piece));
+    const merged = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    if (!merged) return;
+    merged.computeBoundingBox();
+    merged.computeBoundingSphere();
+    const mesh = new THREE.Mesh(merged, this.materials.wall);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.mazeGroup.add(mesh);
+    this.wallMeshes.push(mesh);
+    chunk.mesh = mesh;
+  }
+
+  private unloadChunk(chunk: WallChunk) {
+    const mesh = chunk.mesh;
+    if (!mesh) return;
+    this.mazeGroup.remove(mesh);
+    mesh.geometry.dispose();
+    const i = this.wallMeshes.indexOf(mesh);
+    if (i >= 0) this.wallMeshes.splice(i, 1);
+    chunk.mesh = null;
+  }
+
+  /**
+   * Streams wall chunks around (px, pz): builds chunks inside viewDistance (nearest first, at most
+   * `loadBudget` per call to avoid frame hitches) and frees chunks that fell outside it.
+   */
+  public updateChunks(px: number, pz: number, loadBudget = 3, unloadBudget = Infinity) {
+    const reach = this.viewDistance + this.chunkSpan * 0.71; // chunk centre -> farthest corner
+    const keep = reach + this.chunkSpan; // hysteresis so chunks do not flicker at the edge
+    let unloaded = 0;
+    const toLoad: { chunk: WallChunk; d: number }[] = [];
+    for (const chunk of this.chunks) {
+      const d = Math.hypot(chunk.centerX - px, chunk.centerZ - pz);
+      if (chunk.mesh) {
+        if (d > keep && unloaded < unloadBudget) {
+          this.unloadChunk(chunk);
+          unloaded++;
+        }
+      } else if (d <= reach) {
+        toLoad.push({ chunk, d });
+      }
+    }
+    if (toLoad.length > 1) toLoad.sort((a, b) => a.d - b.d);
+    for (let i = 0; i < toLoad.length && i < loadBudget; i++) {
+      this.loadChunk(toLoad[i].chunk);
+    }
+  }
+
+  public get loadedChunkCount() {
+    return this.chunks.filter((c) => c.mesh).length;
+  }
+
+  public get totalChunkCount() {
+    return this.chunks.length;
+  }
+
   /**
    * Cleanly disposes of all geometry, materials, and children in the maze group
    */
   public clear() {
     this.animatedObjects = [];
     this.wallMeshes = [];
+    this.chunks = [];
 
     while (this.mazeGroup.children.length > 0) {
       const child = this.mazeGroup.children[0];

@@ -431,6 +431,9 @@ export class GameEngine {
       // Cinematic orbital camera view showcasing the square labyrinth
       this.titleOrbitAngle += delta * 0.12;
       this.npcManager?.update(delta, 1e6, 1e6, 0);
+      // Title orbit view shows the whole labyrinth: stream everything in
+      this.mazeBuilder.viewDistance = Infinity;
+      this.mazeBuilder.updateChunks(0, 0, 4);
       const mazeSpan = Math.max(this.mazeData.rows, this.mazeData.cols) * this.mazeData.cellSize;
       const camRadius = mazeSpan * 0.85;
       const camHeight = 28 + Math.sin(elapsedTime * 0.4) * 4;
@@ -537,6 +540,11 @@ export class GameEngine {
 
       // First/Third-person player controller movement
       this.playerController.update(delta);
+
+      // Chunk streaming: only build wall geometry the fog lets the player actually see
+      const fog = this.scene.fog as THREE.FogExp2 | null;
+      this.mazeBuilder.viewDistance = fog && fog.density > 0 ? 1.3 / fog.density : Infinity;
+      this.mazeBuilder.updateChunks(this.playerController.position.x, this.playerController.position.z, 3);
       this.npcManager?.update(
         delta,
         this.playerController.position.x,
