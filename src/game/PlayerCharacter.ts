@@ -418,14 +418,14 @@ export class PlayerCharacter {
     if (isFirstPerson) {
       // In 1st-person, character root strictly faces forward along camera look vector
       this.currentYaw = cameraYaw + Math.PI;
+      this.targetYaw = this.currentYaw;
       this.root.rotation.y = this.currentYaw;
     } else {
-      // In 3rd-person, character smoothly turns to face travel direction when moving,
-      // or faces camera forward direction when stationary (matching atan2 forward angle).
+      // In 3rd-person the camera orbits freely around the character (Free Fire style):
+      // the character only turns to face its travel direction while moving. When stationary
+      // it keeps its last facing, so orbiting the camera shows its sides and front.
       if (isMoving && (Math.abs(moveDirX) > 0.01 || Math.abs(moveDirZ) > 0.01)) {
         this.targetYaw = Math.atan2(moveDirX, moveDirZ);
-      } else {
-        this.targetYaw = cameraYaw + Math.PI;
       }
 
       // Smooth angle interpolation handling wrap-around
@@ -521,6 +521,11 @@ export class PlayerCharacter {
     }
 
     this.applyActions(delta, isMoving && speed > 0.1);
+  }
+
+  /** Direction the player is facing, as a yaw in the camera-yaw convention (forward = (-sin, -cos)). */
+  public get facingYaw(): number {
+    return this.root.rotation.y - Math.PI;
   }
 
   /** Swaps the skin texture of a textured character (no-op for palette characters). */

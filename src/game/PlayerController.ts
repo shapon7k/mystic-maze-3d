@@ -114,8 +114,8 @@ export class PlayerController {
 
     // Sensible vertical look limits:
     // First-person: -75 deg to +75 deg (-1.3 to +1.3 rad)
-    // Third-person: -20 deg to +26 deg (-0.35 to +0.45 rad) - prevents looking under floor or over maze walls
-    const minPitch = this.cameraMode === 'third-person' ? -0.35 : -1.3;
+    // Third-person: -34 deg to +26 deg (-0.6 to +0.45 rad) - prevents looking under floor or over maze walls
+    const minPitch = this.cameraMode === 'third-person' ? -0.6 : -1.3;
     const maxPitch = this.cameraMode === 'third-person' ? 0.45 : 1.3;
     this.rotationPitch = Math.max(minPitch, Math.min(maxPitch, this.rotationPitch));
 
@@ -277,7 +277,7 @@ export class PlayerController {
 
     // 2. Calculate Third-Person camera position and orientation
     const effectiveDist = Math.max(0.22, this.thirdPersonDistance);
-    const tpPitch = Math.max(-0.35, Math.min(0.45, this.rotationPitch));
+    const tpPitch = Math.max(-0.6, Math.min(0.45, this.rotationPitch));
     const cosPitch = Math.cos(tpPitch);
     const sinPitch = Math.sin(tpPitch);
 

@@ -134,4 +134,26 @@ describe('Screen-Space Focus, View Transitions & Facing Direction Consistency', 
 
     character.dispose();
   });
+
+  it('third person: orbiting the camera while stationary does not turn the character (Free Fire style)', () => {
+    const character = new PlayerCharacter();
+    character.update(0.016, 0, 0, 0.4, 0, false, false, 0, 0, true); // facing set from first person
+    const facing = character.root.rotation.y;
+
+    // Swing the camera all the way around the stationary character
+    for (let yaw = 0.4; yaw < 0.4 + Math.PI * 2; yaw += 0.1) {
+      for (let i = 0; i < 5; i++) {
+        character.update(0.016, 0, 0, yaw, 0, false, false, 0, 0, false);
+      }
+      expect(character.root.rotation.y).toBeCloseTo(facing, 6);
+    }
+
+    // Walking turns it toward the travel direction (e.g. towards +X)
+    for (let i = 0; i < 60; i++) {
+      character.update(0.016, 0, 0, 1.0, 4.2, true, false, 1, 0, false);
+    }
+    expect(Math.sin(character.root.rotation.y)).toBeGreaterThan(0.95);
+    expect(character.facingYaw).toBeCloseTo(character.root.rotation.y - Math.PI, 6);
+    character.dispose();
+  });
 });

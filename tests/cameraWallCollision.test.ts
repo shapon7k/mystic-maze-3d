@@ -69,7 +69,7 @@ describe('Camera Wall Collision & Perspective Verification', () => {
         const focusY = controller.cameraFocusY;
         probeOrigin.set(resolved.x, focusY, resolved.z);
 
-        const tpPitch = Math.max(-0.35, Math.min(0.45, controller.rotationPitch));
+        const tpPitch = Math.max(-0.6, Math.min(0.45, controller.rotationPitch));
         const cosPitch = Math.cos(tpPitch);
         const sinPitch = Math.sin(tpPitch);
 

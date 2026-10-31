@@ -484,7 +484,7 @@ export class GameEngine {
         );
 
         // Compute ideal camera position behind player at full distance (2.4m)
-        const tpPitch = Math.max(-0.35, Math.min(0.45, this.playerController.rotationPitch));
+        const tpPitch = Math.max(-0.6, Math.min(0.45, this.playerController.rotationPitch));
         const cosPitch = Math.cos(tpPitch);
         const sinPitch = Math.sin(tpPitch);
         const yaw = this.playerController.rotationYaw;
@@ -556,7 +556,8 @@ export class GameEngine {
         delta,
         this.playerController.position.x,
         this.playerController.position.z,
-        this.playerController.rotationYaw
+        // Attacks land where the CHARACTER faces (in third person the camera can orbit away from it)
+        this.playerCharacter ? this.playerCharacter.facingYaw : this.playerController.rotationYaw
       );
       // NPCs are solid: push the player out of them, then keep the result inside the maze walls
       if (this.npcManager) {

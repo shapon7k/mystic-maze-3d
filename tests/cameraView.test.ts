@@ -63,7 +63,7 @@ describe('Camera View Toggle & Perspective Constraints', () => {
     // Attempt to look straight up beyond limit
     controller.currentInput.lookDeltaY = -5000;
     controller.update(0.016);
-    expect(controller.rotationPitch).toBeGreaterThanOrEqual(-0.35);
+    expect(controller.rotationPitch).toBeGreaterThanOrEqual(-0.6);
 
     // Run updates to let camera transition and position settle
     for (let i = 0; i < 20; i++) {
