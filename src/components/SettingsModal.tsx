@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { SKIN_URLS, SKIN_NAMES } from '../game/Skins';
 import React from 'react';
 import { X, Volume2, Sliders, Monitor, Sparkles, Eye, User } from 'lucide-react';
 import { GameSettings } from '../types/game';
@@ -73,6 +74,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ? 'Immersive eye-level view. Character model is hidden.'
                 : 'Behind-character chase camera with wall collision and restricted height.'}
             </p>
+          </div>
+
+          {/* Character Skin */}
+          <div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 mb-2 font-medium">
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span>Character</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {SKIN_URLS.map((url, i) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => onUpdateSettings({ ...settings, characterSkin: i })}
+                  className={`flex flex-col items-center gap-1 py-1.5 rounded border transition cursor-pointer ${
+                    (settings.characterSkin ?? 0) === i
+                      ? 'bg-cyan-950/80 border-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
+                      : 'bg-slate-800/80 border-slate-700 hover:border-slate-500'
+                  }`}
+                >
+                  <div
+                    className="w-10 h-10"
+                    style={{
+                      backgroundImage: `url(${url})`,
+                      backgroundSize: '320px 320px',
+                      backgroundPosition: '-40px -40px',
+                      imageRendering: 'pixelated',
+                    }}
+                  />
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300">
+                    {SKIN_NAMES[i]}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Look Sensitivity */}

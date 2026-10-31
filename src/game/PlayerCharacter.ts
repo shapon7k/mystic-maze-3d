@@ -22,6 +22,48 @@ const EMOTE_COUNT = 3; // 0 = wave, 1 = cheer, 2 = dance
 
 const mix = (a: number, b: number, w: number) => a + (b - a) * w;
 
+/**
+ * Minecraft-skin box: a BoxGeometry whose UVs follow the standard 64x64 skin layout.
+ * (w, h, d) and (u, v) are in skin pixels; `slice` restricts to rows [from, to) of the part height
+ * (used to split arms into upper arm + forearm); `inflate` grows the box for overlay layers.
+ */
+function skinBox(
+  w: number, h: number, d: number,
+  u: number, v: number,
+  slice: [number, number] | null = null,
+  inflate = 0
+): THREE.BoxGeometry {
+  const s0 = slice ? slice[0] : 0;
+  const s1 = slice ? slice[1] : h;
+  const g = new THREE.BoxGeometry(
+    (w + 2 * inflate) * PX_SIZE,
+    (s1 - s0 + 2 * inflate) * PX_SIZE,
+    (d + 2 * inflate) * PX_SIZE
+  );
+  // BoxGeometry face order: +x, -x, +y, -y, +z, -z (4 vertices each).
+  // Skin regions as [x, y, width, height]; character faces +Z so its right side is -X.
+  const rects: number[][] = [
+    [u + d + w, v + d + s0, d, s1 - s0], // +x : character's left side
+    [u, v + d + s0, d, s1 - s0], //         -x : character's right side
+    [u + d, v, w, d], //                    +y : top
+    [u + d + w, v, w, d], //                -y : bottom
+    [u + d, v + d + s0, w, s1 - s0], //     +z : front
+    [u + 2 * d + w, v + d + s0, w, s1 - s0], // -z : back
+  ];
+  const uv = g.getAttribute('uv');
+  for (let f = 0; f < 6; f++) {
+    const [x0, y0, fw, fh] = rects[f];
+    for (let k = 0; k < 4; k++) {
+      const i = f * 4 + k;
+      const fx = uv.getX(i);
+      const fy = uv.getY(i);
+      uv.setXY(i, (x0 + fx * fw) / 64, 1 - (y0 + (1 - fy) * fh) / 64);
+    }
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
 export interface CharacterPalette {
   skin: number;
   hair: number;
@@ -90,7 +132,14 @@ export class PlayerCharacter {
   private _targetQuat = new THREE.Quaternion();
   private _euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-  constructor(palette: CharacterPalette = DEFAULT_PALETTE) {
+  /** Skin-textured materials (body + alpha-tested overlay layer); empty in palette mode. */
+  private skinMaterials: THREE.MeshStandardMaterial[] = [];
+
+  /**
+   * @param palette flat-colour fallback used when no skin texture is supplied
+   * @param skin a Minecraft 64x64 skin texture; when given the model is textured with it
+   */
+  constructor(palette: CharacterPalette = DEFAULT_PALETTE, skin: THREE.Texture | null = null) {
     this.root = new THREE.Group();
     this.root.name = 'PlayerCharacter';
 
@@ -133,6 +182,31 @@ export class PlayerCharacter {
       return mesh;
     };
 
+    const textured = skin !== null;
+    const baseSkinMat = new THREE.MeshStandardMaterial({ map: skin, roughness: 0.9, metalness: 0 });
+    const overlaySkinMat = new THREE.MeshStandardMaterial({
+      map: skin,
+      alphaTest: 0.5,
+      roughness: 0.9,
+      metalness: 0,
+    });
+    this.skinMaterials = [baseSkinMat, overlaySkinMat];
+    this.materials.push(baseSkinMat, overlaySkinMat);
+    const addSkin = (
+      parent: THREE.Object3D,
+      geo: THREE.BufferGeometry,
+      m: THREE.Material,
+      x: number, y: number, z: number,
+      shadow = true
+    ) => {
+      this.geometries.push(geo);
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = shadow;
+      mesh.receiveShadow = shadow;
+      parent.add(mesh);
+    };
+
     const LEG_H = 12 * PX;
     const TORSO_H = 12 * PX;
     const LIMB_W = 4 * PX;
@@ -147,8 +221,15 @@ export class PlayerCharacter {
       const hip = new THREE.Group();
       hip.position.set(side * LIMB_W * 0.5, 0, 0);
       this.pelvis.add(hip);
-      box(hip, LIMB_W, LEG_H, LIMB_W, pantsMat, 0, -LEG_H / 2, 0);
-      box(hip, LIMB_W + 0.006, 3 * PX, LIMB_W + 0.006, shoeMat, 0, -LEG_H + 1.5 * PX, 0.002);
+      if (textured) {
+        // -x leg is the character's right leg (skin region 0,16), +x is the left leg (16,48)
+        const [lu, lv, ou, ov] = side < 0 ? [0, 16, 0, 32] : [16, 48, 0, 48];
+        addSkin(hip, skinBox(4, 12, 4, lu, lv), baseSkinMat, 0, -LEG_H / 2, 0);
+        addSkin(hip, skinBox(4, 12, 4, ou, ov, null, 0.25), overlaySkinMat, 0, -LEG_H / 2, 0, false);
+      } else {
+        box(hip, LIMB_W, LEG_H, LIMB_W, pantsMat, 0, -LEG_H / 2, 0);
+        box(hip, LIMB_W + 0.006, 3 * PX, LIMB_W + 0.006, shoeMat, 0, -LEG_H + 1.5 * PX, 0.002);
+      }
       const knee = new THREE.Group();
       knee.position.y = -LEG_H / 2;
       hip.add(knee);
@@ -171,20 +252,37 @@ export class PlayerCharacter {
     this.pelvis.add(this.spine);
     this.torsoGroup = new THREE.Group();
     this.spine.add(this.torsoGroup);
-    box(this.torsoGroup, 8 * PX, TORSO_H, LIMB_W, shirtMat, 0, TORSO_H / 2, 0);
-    // Darker hem at the bottom of the shirt for a bit of definition
-    box(this.torsoGroup, 8 * PX + 0.004, PX, LIMB_W + 0.004, shirtDarkMat, 0, PX / 2 + 0.002, 0, false);
+    if (textured) {
+      addSkin(this.torsoGroup, skinBox(8, 12, 4, 16, 16), baseSkinMat, 0, TORSO_H / 2, 0);
+      addSkin(this.torsoGroup, skinBox(8, 12, 4, 16, 32, null, 0.25), overlaySkinMat, 0, TORSO_H / 2, 0, false);
+    } else {
+      box(this.torsoGroup, 8 * PX, TORSO_H, LIMB_W, shirtMat, 0, TORSO_H / 2, 0);
+      // Darker hem at the bottom of the shirt for a bit of definition
+      box(this.torsoGroup, 8 * PX + 0.004, PX, LIMB_W + 0.004, shirtDarkMat, 0, PX / 2 + 0.002, 0, false);
+    }
 
     // Arms: sleeve (upper) + bare forearm/hand (lower), elbow bends between them
     const makeArm = (side: number) => {
       const shoulder = new THREE.Group();
       shoulder.position.set(side * (4 * PX + LIMB_W / 2), TORSO_H, 0);
       this.torsoGroup.add(shoulder);
-      box(shoulder, LIMB_W, 6 * PX, LIMB_W, shirtMat, 0, -3 * PX, 0);
+      // -x arm is the character's right arm (skin 40,16 / overlay 40,32); +x is the left (32,48 / 48,48)
+      const [au, av, ou, ov] = side < 0 ? [40, 16, 40, 32] : [32, 48, 48, 48];
+      if (textured) {
+        addSkin(shoulder, skinBox(4, 12, 4, au, av, [0, 6]), baseSkinMat, 0, -3 * PX, 0);
+        addSkin(shoulder, skinBox(4, 12, 4, ou, ov, [0, 6], 0.25), overlaySkinMat, 0, -3 * PX, 0, false);
+      } else {
+        box(shoulder, LIMB_W, 6 * PX, LIMB_W, shirtMat, 0, -3 * PX, 0);
+      }
       const elbow = new THREE.Group();
       elbow.position.y = -6 * PX;
       shoulder.add(elbow);
-      box(elbow, LIMB_W, 6 * PX, LIMB_W, skinMat, 0, -3 * PX, 0);
+      if (textured) {
+        addSkin(elbow, skinBox(4, 12, 4, au, av, [6, 12]), baseSkinMat, 0, -3 * PX, 0);
+        addSkin(elbow, skinBox(4, 12, 4, ou, ov, [6, 12], 0.25), overlaySkinMat, 0, -3 * PX, 0, false);
+      } else {
+        box(elbow, LIMB_W, 6 * PX, LIMB_W, skinMat, 0, -3 * PX, 0);
+      }
       const hand = new THREE.Group();
       hand.position.y = -6 * PX;
       elbow.add(hand);
@@ -246,15 +344,21 @@ export class PlayerCharacter {
     this.neck.add(this.headGroup);
 
     const H = 8 * PX;
+    if (textured) {
+      addSkin(this.headGroup, skinBox(8, 8, 8, 0, 0), baseSkinMat, 0, H / 2, 0);
+      addSkin(this.headGroup, skinBox(8, 8, 8, 32, 0, null, 0.5), overlaySkinMat, 0, H / 2, 0, false);
+      return;
+    }
     box(this.headGroup, H, H, H, skinMat, 0, H / 2, 0);
 
-    // Hair: top cap, back, sides and a fringe over the forehead
+    // Hair pieces stick out a hair's breadth (e) past the head on every side so no hair face is
+    // coplanar with a skin face (that z-fighting made the head flicker between two colours).
     const e = 0.006;
-    box(this.headGroup, H + e, 2 * PX, H + e, hairMat, 0, H - PX, 0);
-    box(this.headGroup, H + e, 6 * PX, PX, hairMat, 0, H - 3 * PX, -H / 2 + PX / 2);
-    box(this.headGroup, PX, 4 * PX, H - 2 * PX, hairMat, -H / 2 + PX / 2, H - 4 * PX, PX * 0.5 - 0.0);
-    box(this.headGroup, PX, 4 * PX, H - 2 * PX, hairMat, H / 2 - PX / 2, H - 4 * PX, PX * 0.5 - 0.0);
-    box(this.headGroup, H + e, PX, PX, hairMat, 0, H - 1.5 * PX, H / 2 - PX / 2 + 0.001);
+    box(this.headGroup, H + 2 * e, 2 * PX + e, H + 2 * e, hairMat, 0, H - PX + e / 2, 0); // top
+    box(this.headGroup, H + 2 * e, 6 * PX + e, PX + e, hairMat, 0, H - 3 * PX + e / 2, -H / 2 + PX / 2 - e / 2); // back
+    box(this.headGroup, PX + e, 4 * PX, H - 2 * PX, hairMat, -H / 2 + PX / 2 - e / 2, H - 4 * PX, PX * 0.5); // left side
+    box(this.headGroup, PX + e, 4 * PX, H - 2 * PX, hairMat, H / 2 - PX / 2 + e / 2, H - 4 * PX, PX * 0.5); // right side
+    box(this.headGroup, H + 2 * e, PX, PX + e, hairMat, 0, H - 1.5 * PX, H / 2 - PX / 2 + e / 2); // fringe
 
     // Face (flat pixel details on the +Z front)
     const fz = H / 2 + 0.003;
@@ -417,6 +521,14 @@ export class PlayerCharacter {
     }
 
     this.applyActions(delta, isMoving && speed > 0.1);
+  }
+
+  /** Swaps the skin texture of a textured character (no-op for palette characters). */
+  public setSkin(skin: THREE.Texture) {
+    for (const m of this.skinMaterials) {
+      m.map = skin;
+      m.needsUpdate = true;
+    }
   }
 
   /** Red flash used for hit feedback (0 = none). Only affects lit body materials. */

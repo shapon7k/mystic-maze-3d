@@ -138,6 +138,44 @@ describe('PlayerCharacter Procedural Model & Articulation', () => {
     character.dispose();
   });
 
+  it('builds a skin-textured Minecraft model whose UVs follow the 64x64 skin layout', () => {
+    const tex = new THREE.Texture();
+    const character = new PlayerCharacter(undefined, tex);
+    character.root.updateMatrixWorld(true);
+
+    // Find the head's front (+Z) face UVs: skin region x 8..16, y 8..16 of 64
+    let headFront: number[] | null = null;
+    character.headGroup.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || headFront) return;
+      const uv = mesh.geometry.getAttribute('uv');
+      const us: number[] = [];
+      const vs: number[] = [];
+      for (let i = 16; i < 20; i++) { // 5th face (+z) = vertices 16..19
+        us.push(uv.getX(i));
+        vs.push(uv.getY(i));
+      }
+      headFront = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
+    });
+    expect(headFront).not.toBeNull();
+    const [u0, u1, v0, v1] = headFront as unknown as number[];
+    expect(u0).toBeCloseTo(8 / 64, 5);
+    expect(u1).toBeCloseTo(16 / 64, 5);
+    expect(v0).toBeCloseTo(1 - 16 / 64, 5);
+    expect(v1).toBeCloseTo(1 - 8 / 64, 5);
+
+    // Swapping skins keeps the same materials, just a new map
+    const other = new THREE.Texture();
+    character.setSkin(other);
+    let usesOther = false;
+    character.root.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (m && m.map === other) usesOther = true;
+    });
+    expect(usesOther).toBe(true);
+    character.dispose();
+  });
+
   it('disposes all geometries and materials cleanly without throwing', () => {
     const character = new PlayerCharacter();
     expect(() => character.dispose()).not.toThrow();

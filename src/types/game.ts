@@ -117,6 +117,8 @@ export interface GameSettings {
   isMuted: boolean;
   invertY: boolean;
   cameraMode: 'first-person' | 'third-person';
+  /** Index (0-2) of the bundled character skin used by the player. */
+  characterSkin: number;
 }
 
 export interface RunStatistics {

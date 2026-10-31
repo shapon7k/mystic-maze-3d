@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { MazeData, cellCenterToWorld, getOpenNeighbors } from '../types/game';
 import { createRNG } from './MazeGenerator';
 import { PlayerCharacter, CharacterPalette } from './PlayerCharacter';
+import { getSkinTexture, SKIN_COUNT } from './Skins';
 
 const PALETTES: CharacterPalette[] = [
   { skin: 0xb58a6a, hair: 0x2a1b10, shirt: 0x8b5a2b, pants: 0x4a3a2a, shoe: 0x2f2a25 }, // villager
@@ -81,7 +82,10 @@ export class NpcManager {
       if (Math.abs(row - maze.endCoord.row) + Math.abs(col - maze.endCoord.col) < 3) continue;
       used.add(key);
 
-      const character = new PlayerCharacter(PALETTES[this.npcs.length % PALETTES.length]);
+      const character = new PlayerCharacter(
+        PALETTES[this.npcs.length % PALETTES.length],
+        getSkinTexture(this.npcs.length % SKIN_COUNT) // the three bundled skins, used in rotation
+      );
       character.sword.visible = false;
       this.scene.add(character.root);
       const p = cellCenterToWorld(row, col, maze.rows, maze.cols, maze.cellSize);

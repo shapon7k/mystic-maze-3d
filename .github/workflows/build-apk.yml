@@ -1,9 +1,9 @@
 name: Build Android Debug APK
 
+# Manual only: run it from GitHub -> Actions -> "Build Android Debug APK" -> Run workflow.
+# (Pushes no longer trigger a build.)
 on:
   workflow_dispatch:
-  push:
-    branches: [main, master]
 
 permissions:
   contents: write
