@@ -53,6 +53,8 @@ export default function App() {
     }
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [health, setHealth] = useState<number | null>(null);
+  const [defeatedBanner, setDefeatedBanner] = useState(false);
 
   // HUD stats
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
@@ -78,6 +80,15 @@ export default function App() {
     engine.applySettings(settings);
 
     setCurrentSeed(engine.mazeData.seed);
+
+    // Playground health / defeat callback from engine
+    engine.onHealthChange = (h, defeated) => {
+      setHealth(h);
+      if (defeated) {
+        setDefeatedBanner(true);
+        window.setTimeout(() => setDefeatedBanner(false), 2200);
+      }
+    };
 
     // Victory callback from engine
     engine.onVictory = () => {
@@ -157,6 +168,8 @@ export default function App() {
 
     setDifficulty(diff);
     engineRef.current.initMaze(diff, seed, playground);
+    setHealth(playground ? 100 : null);
+    setDefeatedBanner(false);
     setCurrentSeed(engineRef.current.mazeData.seed);
 
     engineRef.current.setGameState('PLAYING');
@@ -483,6 +496,8 @@ export default function App() {
           stepsTaken={stepsTaken}
           isMuted={settings.isMuted}
           isSprinting={isSprinting}
+          health={health}
+          defeated={defeatedBanner}
           cameraMode={cameraMode}
           onJoystickMove={handleJoystickMove}
           onLookDelta={handleLookDelta}

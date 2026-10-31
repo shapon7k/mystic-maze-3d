@@ -11,6 +11,7 @@ import { MazeBuilder } from './MazeBuilder';
 import { CollisionSystem } from './CollisionSystem';
 import { PlayerController } from './PlayerController';
 import { NpcManager } from './NpcManager';
+import { EnemyManager } from './EnemyManager';
 import { getSkinTexture, getWeaponTexture, WEAPONS } from './Skins';
 import { PlayerCharacter } from './PlayerCharacter';
 import { AudioManager } from './AudioManager';
@@ -30,6 +31,11 @@ export class GameEngine {
   public playerController!: PlayerController;
   public playerCharacter!: PlayerCharacter;
   public npcManager!: NpcManager;
+  public enemyManager: EnemyManager | null = null;
+  public playerHealth = 100;
+  private lastDamageAt = 0;
+  /** Reports health changes (0-100) and defeats; used by the HUD in the Playground. */
+  public onHealthChange?: (health: number, defeated: boolean) => void;
   private playerSkin = 0;
   private playerWeapon = 0;
 
@@ -270,18 +276,49 @@ export class GameEngine {
       this.npcManager = new NpcManager(this.scene);
     }
     this.npcManager.spawn(this.mazeData);
+
+    // Hostile enemies exist only in the Playground
+    this.playerHealth = 100;
+    this.lastDamageAt = 0;
+    if (this.mazeData.playground) {
+      if (!this.enemyManager) {
+        this.enemyManager = new EnemyManager(this.scene, (x, z) => this.collisionSystem.resolvePosition(x, z));
+      }
+      this.enemyManager.spawn(this.mazeData);
+    } else if (this.enemyManager) {
+      this.enemyManager.clear();
+    }
   }
 
   /** Hand actions driven by on-screen buttons / keys. */
   public doAttack() {
     this.playerCharacter?.triggerAttack();
     this.npcManager?.queueHit();
+    this.enemyManager?.queueHit();
   }
   public setDefend(active: boolean) {
     this.playerCharacter?.setDefending(active);
   }
   public doEmote() {
     this.playerCharacter?.triggerEmote();
+  }
+
+  private damagePlayer(amount: number) {
+    this.playerHealth = Math.max(0, this.playerHealth - amount);
+    this.lastDamageAt = this.clock.elapsedTime;
+    if (this.playerHealth <= 0) {
+      // Defeated: back to the arena start with full health; enemies reset too
+      this.playerHealth = 100;
+      this.playerController.resetTo(
+        this.mazeData.startWorldPos.x,
+        this.mazeData.startWorldPos.z,
+        this.mazeData.startYaw
+      );
+      this.enemyManager?.resetAll();
+      this.onHealthChange?.(100, true);
+    } else {
+      this.onHealthChange?.(Math.round(this.playerHealth), false);
+    }
   }
 
   public setGameState(state: GameState) {
@@ -572,12 +609,29 @@ export class GameEngine {
         // Attacks land where the CHARACTER faces (in third person the camera can orbit away from it)
         this.playerCharacter ? this.playerCharacter.facingYaw : this.playerController.rotationYaw
       );
-      // NPCs are solid: push the player out of them, then keep the result inside the maze walls
+      // Enemies (Playground): strike the player; Defend cuts the damage
+      if (this.enemyManager && this.playerCharacter) {
+        const raw = this.enemyManager.update(
+          delta,
+          this.playerController.position.x,
+          this.playerController.position.z,
+          this.playerCharacter.facingYaw
+        );
+        if (raw > 0) {
+          this.damagePlayer(raw * (this.playerCharacter.isDefending ? 0.3 : 1));
+        } else if (this.playerHealth < 100 && elapsedTime - this.lastDamageAt > 6) {
+          this.playerHealth = Math.min(100, this.playerHealth + 4 * delta); // slow regeneration
+          this.onHealthChange?.(Math.round(this.playerHealth), false);
+        }
+      }
+
+      // NPCs and enemies are solid: push the player out of them, then keep the result inside the walls
       if (this.npcManager) {
-        const pushed = this.npcManager.pushPlayerOut(
+        let pushed = this.npcManager.pushPlayerOut(
           this.playerController.position.x,
           this.playerController.position.z
         );
+        if (this.enemyManager) pushed = this.enemyManager.pushPlayerOut(pushed.x, pushed.z);
         const safe = this.collisionSystem.resolvePosition(pushed.x, pushed.z);
         this.playerController.position.x = safe.x;
         this.playerController.position.z = safe.z;
@@ -706,6 +760,9 @@ export class GameEngine {
 
     if (this.npcManager) {
       this.npcManager.dispose();
+    }
+    if (this.enemyManager) {
+      this.enemyManager.dispose();
     }
     if (this.playerCharacter) {
       this.playerCharacter.dispose();

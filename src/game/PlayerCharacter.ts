@@ -70,6 +70,8 @@ export interface CharacterPalette {
   shirt: number;
   pants: number;
   shoe: number;
+  /** Optional eye colour (pupils); whites turn dark. Used by enemies for glowing red eyes. */
+  eye?: number;
 }
 
 const DEFAULT_PALETTE: CharacterPalette = {
@@ -158,8 +160,8 @@ export class PlayerCharacter {
     const shirtDarkMat = mat(new THREE.Color(palette.shirt).multiplyScalar(0.8).getHex());
     const pantsMat = mat(palette.pants);
     const shoeMat = mat(palette.shoe);
-    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const eyeBlueMat = new THREE.MeshBasicMaterial({ color: 0x4b3fb0 });
+    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: palette.eye !== undefined ? 0x330000 : 0xffffff });
+    const eyeBlueMat = new THREE.MeshBasicMaterial({ color: palette.eye ?? 0x4b3fb0 });
     const mouthMat = new THREE.MeshBasicMaterial({ color: 0x7a4a34 });
     this.materials.push(
       skinMat, hairMat, shirtMat, shirtDarkMat, pantsMat, shoeMat, eyeWhiteMat, eyeBlueMat, mouthMat
@@ -578,6 +580,10 @@ export class PlayerCharacter {
       m.map = skin;
       m.needsUpdate = true;
     }
+  }
+
+  public get isDefending(): boolean {
+    return this.defending;
   }
 
   /** Red flash used for hit feedback (0 = none). Only affects lit body materials. */

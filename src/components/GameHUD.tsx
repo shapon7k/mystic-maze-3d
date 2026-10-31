@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Pause, Volume2, VolumeX, Zap, Eye, User, Swords, Shield, Smile } from 'lucide-react';
+import { Pause, Volume2, VolumeX, Zap, Eye, User, Swords, Shield, Smile, Heart } from 'lucide-react';
 import { VirtualJoystick } from './VirtualJoystick';
 
 interface GameHUDProps {
@@ -12,6 +12,9 @@ interface GameHUDProps {
   stepsTaken: number;
   isMuted: boolean;
   isSprinting: boolean;
+  /** Player health 0-100 in the Playground; null elsewhere (no bar). */
+  health: number | null;
+  defeated: boolean;
   cameraMode: 'first-person' | 'third-person';
   onJoystickMove: (x: number, y: number) => void;
   onLookDelta: (dx: number, dy: number) => void;
@@ -29,6 +32,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   stepsTaken,
   isMuted,
   isSprinting,
+  health,
+  defeated,
   cameraMode,
   onJoystickMove,
   onLookDelta,
@@ -40,6 +45,19 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onToggleCamera,
   onPause,
 }) => {
+  // Red screen flash whenever health drops
+  const [flash, setFlash] = React.useState(false);
+  const prevHealth = useRef<number | null>(health);
+  useEffect(() => {
+    if (health !== null && prevHealth.current !== null && health < prevHealth.current) {
+      setFlash(true);
+      const id = window.setTimeout(() => setFlash(false), 220);
+      prevHealth.current = health;
+      return () => window.clearTimeout(id);
+    }
+    prevHealth.current = health;
+  }, [health]);
+
   // Touch Camera Look Zone (Right half of the viewport)
   const lookAreaRef = useRef<HTMLDivElement>(null);
   const activeLookId = useRef<number | null>(null);
@@ -104,6 +122,28 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         onPointerCancel={handleLookPointerUp}
         className="absolute top-0 right-0 w-1/2 h-full pointer-events-auto touch-none z-0"
       />
+
+      {/* Damage flash + health bar + defeat banner (Playground only) */}
+      {flash && <div className="absolute inset-0 z-10 bg-red-600/30 pointer-events-none" />}
+      {health !== null && (
+        <div className="absolute top-2.5 sm:top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-slate-900/80 border border-slate-700/60 rounded px-2.5 py-1 shadow-md">
+          <Heart className="w-3.5 h-3.5 text-rose-400 fill-current" />
+          <div className="w-24 sm:w-40 h-2.5 rounded bg-slate-800 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-150 ${health > 35 ? 'bg-emerald-400' : 'bg-rose-500'}`}
+              style={{ width: `${Math.max(0, Math.min(100, health))}%` }}
+            />
+          </div>
+          <span className="text-[10px] sm:text-xs font-mono text-slate-200 tabular-nums w-7 text-right">{health}</span>
+        </div>
+      )}
+      {defeated && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="bg-slate-950/80 border border-rose-500/60 rounded-lg px-5 py-2 text-rose-300 font-bold uppercase tracking-widest text-sm sm:text-lg">
+            Defeated · Back to start
+          </div>
+        </div>
+      )}
 
       {/* TOP PERIMETER: Stats & Controls */}
       <header className="relative z-10 flex items-center justify-between w-full">
