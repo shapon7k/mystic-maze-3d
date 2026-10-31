@@ -103,3 +103,24 @@ describe('MazeGenerator & MazeValidator (square grid)', () => {
     }
   });
 });
+
+describe('Playground arena', () => {
+  it('is an open hall: only the outer boundary has walls, NPC-ready, never an exit trigger', async () => {
+    const { MazeGenerator } = await import('../src/game/MazeGenerator');
+    const { buildWallSegments } = await import('../src/game/WallGeometry');
+    const maze = MazeGenerator.generatePlayground();
+    expect(maze.playground).toBe(true);
+    const segs = buildWallSegments(maze);
+    // 4 merged runs: north, south, west, east
+    expect(segs.length).toBe(4);
+    for (let r = 0; r < maze.rows; r++) {
+      for (let c = 0; c < maze.cols; c++) {
+        const cell = maze.cells[r][c];
+        expect(cell.openN).toBe(r > 0);
+        expect(cell.openS).toBe(r < maze.rows - 1);
+        expect(cell.openW).toBe(c > 0);
+        expect(cell.openE).toBe(c < maze.cols - 1);
+      }
+    }
+  });
+});

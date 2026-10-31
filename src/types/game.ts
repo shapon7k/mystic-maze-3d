@@ -82,6 +82,8 @@ export interface MazeData {
   /** Player yaw at the start so the player faces an open passage (not a wall) */
   startYaw: number;
   shortestPathLength: number;
+  /** Open practice arena: no inner walls, no timer-ending exit, extra NPCs. */
+  playground?: boolean;
 }
 
 /** World-space center of a grid cell. The maze is centered on the world origin. */

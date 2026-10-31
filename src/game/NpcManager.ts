@@ -69,7 +69,7 @@ export class NpcManager {
     this.clear();
     this.maze = maze;
     this.rng = createRNG((maze.seed ^ 0x9e3779b9) >>> 0);
-    const count = NPC_COUNT[maze.difficulty] ?? 3;
+    const count = maze.playground ? 6 : (NPC_COUNT[maze.difficulty] ?? 3);
     const used = new Set<string>();
     let attempts = 0;
     while (this.npcs.length < count && attempts++ < 400) {

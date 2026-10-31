@@ -152,6 +152,42 @@ export class MazeGenerator {
     };
   }
 
+  /**
+   * Open practice arena: a large square hall with only the outer wall. Every inner cell boundary is open
+   * (so the wall builder emits just the boundary), there is no route to find, and the exit is never triggered.
+   */
+  public static generatePlayground(): MazeData {
+    const rows = 12;
+    const cols = 12;
+    const cellSize = 5.0;
+    const cells: MazeCell[][] = [];
+    for (let r = 0; r < rows; r++) {
+      const line: MazeCell[] = [];
+      for (let c = 0; c < cols; c++) {
+        line.push({ row: r, col: c, openN: r > 0, openS: r < rows - 1, openW: c > 0, openE: c < cols - 1 });
+      }
+      cells.push(line);
+    }
+    const startCoord = { row: rows - 1, col: Math.floor(cols / 2) };
+    const endCoord = { row: 0, col: 0 }; // decorative portal in a corner; never triggers in the playground
+    return {
+      seed: 0,
+      difficulty: 'novice',
+      rows,
+      cols,
+      cellSize,
+      wallHeight: 4.8,
+      cells,
+      startCoord,
+      endCoord,
+      startWorldPos: cellCenterToWorld(startCoord.row, startCoord.col, rows, cols, cellSize),
+      endWorldPos: cellCenterToWorld(endCoord.row, endCoord.col, rows, cols, cellSize),
+      startYaw: 0, // facing north (-Z) into the arena
+      shortestPathLength: 0,
+      playground: true,
+    };
+  }
+
   /** World-space center of the cell (row, col) of the given maze. */
   public static cellToWorld(maze: Pick<MazeData, 'rows' | 'cols' | 'cellSize'>, row: number, col: number) {
     return cellCenterToWorld(row, col, maze.rows, maze.cols, maze.cellSize);

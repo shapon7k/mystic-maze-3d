@@ -148,13 +148,15 @@ export default function App() {
   }, [cameraMode]);
 
   // Start new run
-  const handleStartGame = useCallback((diff: DifficultyLevel, seed?: number) => {
+  const playgroundRef = useRef(false);
+  const handleStartGame = useCallback((diff: DifficultyLevel, seed?: number, playground = false) => {
+    playgroundRef.current = playground;
     if (!engineRef.current || !audioManagerRef.current) return;
     audioManagerRef.current.ensureContext();
     audioManagerRef.current.playUIClick();
 
     setDifficulty(diff);
-    engineRef.current.initMaze(diff, seed);
+    engineRef.current.initMaze(diff, seed, playground);
     setCurrentSeed(engineRef.current.mazeData.seed);
 
     engineRef.current.setGameState('PLAYING');
@@ -220,7 +222,7 @@ export default function App() {
     if (!engineRef.current || !audioManagerRef.current) return;
     audioManagerRef.current.playUIClick();
 
-    handleStartGame(difficulty, currentSeed);
+    handleStartGame(difficulty, currentSeed, playgroundRef.current);
   }, [difficulty, currentSeed, handleStartGame]);
 
   // New Maze (fresh random seed)
@@ -229,7 +231,7 @@ export default function App() {
     audioManagerRef.current.playUIClick();
 
     const freshSeed = Math.floor(Math.random() * 900000 + 100000);
-    handleStartGame(difficulty, freshSeed);
+    handleStartGame(difficulty, freshSeed, playgroundRef.current);
   }, [difficulty, handleStartGame]);
 
   // Return to Main Menu
@@ -469,6 +471,7 @@ export default function App() {
         <MenuFlow
           initialDifficulty={difficulty}
           onStartGame={handleStartGame}
+          onStartPlayground={() => handleStartGame('novice', undefined, true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
       )}

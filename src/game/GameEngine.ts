@@ -228,9 +228,9 @@ export class GameEngine {
   /**
    * Initializes or regenerates the procedural maze
    */
-  public initMaze(difficulty: DifficultyLevel, seed?: number) {
+  public initMaze(difficulty: DifficultyLevel, seed?: number, playground = false) {
     const config = DIFFICULTY_PRESETS[difficulty];
-    this.mazeData = MazeGenerator.generate(config, seed);
+    this.mazeData = playground ? MazeGenerator.generatePlayground() : MazeGenerator.generate(config, seed);
     const wallSegments = buildWallSegments(this.mazeData);
 
     if (!this.collisionSystem) {
@@ -644,7 +644,7 @@ export class GameEngine {
       this.audioManager.setPortalActive(isPortalAudible);
 
       // Check exit trigger
-      if (distToExit < this.mazeBuilder.portalTriggerRadius) {
+      if (!this.mazeData.playground && distToExit < this.mazeBuilder.portalTriggerRadius) {
         this.audioManager.setPortalActive(false);
         this.audioManager.playVictoryFanfare();
         this.setGameState('VICTORY');

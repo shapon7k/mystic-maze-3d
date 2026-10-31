@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Dices, Info, Play, Settings as SettingsIcon, ShieldAlert, X } from 'lucide-react';
+import { ArrowLeft, Dices, Info, Play, Settings as SettingsIcon, ShieldAlert, Swords, X } from 'lucide-react';
 import { DifficultyLevel, DIFFICULTY_PRESETS } from '../types/game';
 
 type MenuScreen = 'splash' | 'menu' | 'setup';
@@ -12,6 +12,7 @@ type MenuScreen = 'splash' | 'menu' | 'setup';
 interface MenuFlowProps {
   initialDifficulty: DifficultyLevel;
   onStartGame: (difficulty: DifficultyLevel, seed?: number) => void;
+  onStartPlayground: () => void;
   onOpenSettings: () => void;
 }
 
@@ -60,9 +61,10 @@ const SplashScreen: React.FC<{ onContinue: () => void }> = ({ onContinue }) => {
 /** Screen 2: main menu */
 const MainMenuScreen: React.FC<{
   onPlay: () => void;
+  onPlayground: () => void;
   onSettings: () => void;
   onAbout: () => void;
-}> = ({ onPlay, onSettings, onAbout }) => (
+}> = ({ onPlay, onPlayground, onSettings, onAbout }) => (
   <div className="mm-screen" style={{ alignItems: 'center', gap: '5cqw' }}>
     <div style={{ flex: 1.15 }}>
       <Emblem small />
@@ -80,6 +82,10 @@ const MainMenuScreen: React.FC<{
       <button type="button" className="mm-btn mm-primary" onClick={onPlay}>
         <Play fill="currentColor" />
         <span>Play</span>
+      </button>
+      <button type="button" className="mm-btn" onClick={onPlayground}>
+        <Swords />
+        <span>Playground</span>
       </button>
       <button type="button" className="mm-btn" onClick={onSettings}>
         <SettingsIcon />
@@ -202,7 +208,7 @@ const AboutPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   </div>
 );
 
-export const MenuFlow: React.FC<MenuFlowProps> = ({ initialDifficulty, onStartGame, onOpenSettings }) => {
+export const MenuFlow: React.FC<MenuFlowProps> = ({ initialDifficulty, onStartGame, onStartPlayground, onOpenSettings }) => {
   const [screen, setScreen] = useState<MenuScreen>(splashAlreadyShown ? 'menu' : 'splash');
   const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -220,6 +226,7 @@ export const MenuFlow: React.FC<MenuFlowProps> = ({ initialDifficulty, onStartGa
         {screen === 'menu' && (
           <MainMenuScreen
             onPlay={() => setScreen('setup')}
+            onPlayground={onStartPlayground}
             onSettings={onOpenSettings}
             onAbout={() => setAboutOpen(true)}
           />
