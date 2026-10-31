@@ -176,6 +176,24 @@ describe('PlayerCharacter Procedural Model & Articulation', () => {
     character.dispose();
   });
 
+  it('switches between the blocky sword and sprite weapons', () => {
+    const character = new PlayerCharacter();
+    const blocky = character.sword.children.filter((c) => c.visible && (c as THREE.Mesh).isMesh).length;
+    expect(blocky).toBeGreaterThan(3);
+
+    character.setWeapon({ texture: new THREE.Texture(), size: 0.6, grip: 0.15 });
+    expect(character.sword.children.filter((c) => (c as THREE.Mesh).isMesh && c.visible).length).toBe(0);
+    let sprites = 0;
+    character.sword.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh && o.visible && (o.parent as THREE.Object3D).visible) sprites++;
+    });
+    expect(sprites).toBe(1);
+
+    character.setWeapon(null);
+    expect(character.sword.children.filter((c) => (c as THREE.Mesh).isMesh && c.visible).length).toBe(blocky);
+    character.dispose();
+  });
+
   it('disposes all geometries and materials cleanly without throwing', () => {
     const character = new PlayerCharacter();
     expect(() => character.dispose()).not.toThrow();

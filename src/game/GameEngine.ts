@@ -11,7 +11,7 @@ import { MazeBuilder } from './MazeBuilder';
 import { CollisionSystem } from './CollisionSystem';
 import { PlayerController } from './PlayerController';
 import { NpcManager } from './NpcManager';
-import { getSkinTexture } from './Skins';
+import { getSkinTexture, getWeaponTexture, WEAPONS } from './Skins';
 import { PlayerCharacter } from './PlayerCharacter';
 import { AudioManager } from './AudioManager';
 import { buildWallSegments } from './WallGeometry';
@@ -31,6 +31,14 @@ export class GameEngine {
   public playerCharacter!: PlayerCharacter;
   public npcManager!: NpcManager;
   private playerSkin = 0;
+  private playerWeapon = 0;
+
+  private applyWeapon() {
+    if (!this.playerCharacter) return;
+    const def = WEAPONS[this.playerWeapon];
+    const tex = def?.url ? getWeaponTexture(this.playerWeapon) : null;
+    this.playerCharacter.setWeapon(def && tex ? { texture: tex, size: def.size, grip: def.grip } : null);
+  }
   public audioManager: AudioManager;
 
   // Particles
@@ -250,6 +258,7 @@ export class GameEngine {
     if (!this.playerCharacter) {
       this.playerCharacter = new PlayerCharacter(undefined, getSkinTexture(this.playerSkin));
       this.scene.add(this.playerCharacter.root);
+      this.applyWeapon();
     }
     this.playerCharacter.root.position.set(
       this.mazeData.startWorldPos.x,
@@ -309,6 +318,10 @@ export class GameEngine {
   public applySettings(settings: GameSettings) {
     this.playerController.lookSensitivity = settings.lookSensitivity;
     this.playerController.invertY = settings.invertY;
+    if (typeof settings.characterWeapon === 'number' && settings.characterWeapon !== this.playerWeapon) {
+      this.playerWeapon = settings.characterWeapon;
+      this.applyWeapon();
+    }
     if (typeof settings.characterSkin === 'number' && settings.characterSkin !== this.playerSkin) {
       this.playerSkin = settings.characterSkin;
       const tex = getSkinTexture(this.playerSkin);

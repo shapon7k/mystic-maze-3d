@@ -119,6 +119,8 @@ export interface GameSettings {
   cameraMode: 'first-person' | 'third-person';
   /** Index (0-2) of the bundled character skin used by the player. */
   characterSkin: number;
+  /** Index (0-3) of the weapon held in the player's hand. */
+  characterWeapon: number;
 }
 
 export interface RunStatistics {

@@ -120,6 +120,10 @@ export class PlayerCharacter {
 
   /** Held diamond-style sword (child of the right hand). */
   public sword!: THREE.Group;
+  private swordParts: THREE.Object3D[] = [];
+  private spriteWeapon!: THREE.Group;
+  private spriteMesh!: THREE.Mesh;
+  private spriteMat!: THREE.MeshStandardMaterial;
 
   // Hand actions (attack / defend / emote)
   private attackT = -1;
@@ -335,6 +339,28 @@ export class PlayerCharacter {
     box(this.sword, PX * 1.0, 8 * PX, 2.6 * PX, diamondMat, 0, 7 * PX, 0); // blade
     box(this.sword, PX * 1.1, 8 * PX, 0.9 * PX, diamondDarkMat, 0, 7 * PX, 0); // centre ridge
     box(this.sword, PX * 1.0, 1.6 * PX, 1.6 * PX, diamondTipMat, 0, 11.6 * PX, 0); // tip
+    this.swordParts = [...this.sword.children];
+
+    // Sprite weapons (frost sword, katana, bow): a flat textured plane whose bottom-left -> top-right
+    // diagonal runs along the sword's +Y axis, so the blade points the same way as the blocky sword.
+    this.spriteMat = new THREE.MeshStandardMaterial({
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+      roughness: 0.6,
+      metalness: 0.1,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.35,
+    });
+    this.materials.push(this.spriteMat);
+    const spriteGeo = new THREE.PlaneGeometry(1, 1);
+    this.geometries.push(spriteGeo);
+    this.spriteMesh = new THREE.Mesh(spriteGeo, this.spriteMat);
+    this.spriteMesh.rotation.z = Math.PI / 4;
+    this.spriteWeapon = new THREE.Group();
+    this.spriteWeapon.rotation.y = Math.PI / 2; // flat faces point sideways, like a held item
+    this.spriteWeapon.add(this.spriteMesh);
+    this.spriteWeapon.visible = false;
+    this.sword.add(this.spriteWeapon);
 
     // Neck pivot at top of torso; head sits directly on it (no visible neck in Minecraft)
     this.neck = new THREE.Group();
@@ -526,6 +552,24 @@ export class PlayerCharacter {
   /** Direction the player is facing, as a yaw in the camera-yaw convention (forward = (-sin, -cos)). */
   public get facingYaw(): number {
     return this.root.rotation.y - Math.PI;
+  }
+
+  /**
+   * Chooses the held weapon. `null` = the built-in blocky diamond sword; otherwise a sprite weapon
+   * with the given texture, edge `size` (m) and `grip` (fraction of the diagonal from the handle end).
+   */
+  public setWeapon(sprite: { texture: THREE.Texture; size: number; grip: number } | null) {
+    const useSprite = sprite !== null;
+    for (const part of this.swordParts) part.visible = !useSprite;
+    this.spriteWeapon.visible = useSprite;
+    if (sprite) {
+      this.spriteMat.map = sprite.texture;
+      this.spriteMat.emissiveMap = sprite.texture;
+      this.spriteMat.needsUpdate = true;
+      this.spriteMesh.scale.set(sprite.size, sprite.size, 1);
+      // Shift so the gripped point of the diagonal sits in the fist
+      this.spriteMesh.position.y = (0.5 - sprite.grip) * sprite.size * Math.SQRT2;
+    }
   }
 
   /** Swaps the skin texture of a textured character (no-op for palette characters). */

@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { SKIN_URLS, SKIN_NAMES } from '../game/Skins';
+import { SKIN_URLS, SKIN_NAMES, WEAPONS } from '../game/Skins';
 import React from 'react';
-import { X, Volume2, Sliders, Monitor, Sparkles, Eye, User } from 'lucide-react';
+import { X, Volume2, Sliders, Monitor, Sparkles, Eye, User, Swords } from 'lucide-react';
 import { GameSettings } from '../types/game';
 
 interface SettingsModalProps {
@@ -105,6 +105,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                   <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300">
                     {SKIN_NAMES[i]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Weapon */}
+          <div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 mb-2 font-medium">
+              <Swords className="w-3.5 h-3.5 text-slate-400" />
+              <span>Weapon</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {WEAPONS.map((w, i) => (
+                <button
+                  key={w.name}
+                  type="button"
+                  onClick={() => onUpdateSettings({ ...settings, characterWeapon: i })}
+                  className={`flex flex-col items-center gap-1 py-1.5 rounded border transition cursor-pointer ${
+                    (settings.characterWeapon ?? 0) === i
+                      ? 'bg-cyan-950/80 border-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
+                      : 'bg-slate-800/80 border-slate-700 hover:border-slate-500'
+                  }`}
+                >
+                  {w.url ? (
+                    <img src={w.url} alt="" className="w-10 h-10 object-contain" style={{ imageRendering: 'pixelated' }} />
+                  ) : (
+                    <Swords className="w-10 h-10 p-1.5 text-cyan-300" />
+                  )}
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 text-center leading-tight">
+                    {w.name}
                   </span>
                 </button>
               ))}

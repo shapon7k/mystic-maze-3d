@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   invertY: false,
   cameraMode: 'first-person',
   characterSkin: 0,
+  characterWeapon: 0,
 };
 
 export default function App() {
@@ -42,7 +43,8 @@ export default function App() {
           ...DEFAULT_SETTINGS,
           ...parsed,
           cameraMode: parsed.cameraMode === 'third-person' ? 'third-person' : 'first-person',
-          characterSkin: [0, 1, 2].includes(parsed.characterSkin) ? parsed.characterSkin : 0,
+          characterSkin: [0, 1, 2, 3, 4, 5].includes(parsed.characterSkin) ? parsed.characterSkin : 0,
+          characterWeapon: [0, 1, 2, 3].includes(parsed.characterWeapon) ? parsed.characterWeapon : 0,
         };
       }
       return DEFAULT_SETTINGS;
